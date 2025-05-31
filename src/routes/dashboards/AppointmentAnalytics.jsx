@@ -24,18 +24,8 @@ import advancedFormat from 'dayjs/plugin/advancedFormat';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 import { useFetchAllAppointmentsQuery } from '../../services/api/appointmentsApi';
 import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer, 
   BarChart, 
   Bar,
-  AreaChart,
-  Area,
   PieChart,
   Pie,
   Cell
@@ -110,51 +100,6 @@ const calculateStats = (dateRange, timeRange, customDate, customStartDate, custo
     return acc;
   }, {});
 
-  // Daily breakdown (for week/month/year views)
-  const dailyData = {};
-  const weeklyData = {};
-  const monthlyData = {};
-
-  let currentDate = startDate;
-  while (currentDate.isSameOrBefore(endDate)) {
-    const dayKey = currentDate.format('YYYY-MM-DD');
-    const weekKey = `Week ${currentDate.week()}`;
-    const monthKey = currentDate.format('MMMM YYYY');
-    
-    dailyData[dayKey] = 0;
-    weeklyData[weekKey] = 0;
-    monthlyData[monthKey] = 0;
-    
-    currentDate = currentDate.add(1, 'day');
-  }
-
-  filteredAppointments.forEach(appointment => {
-    const appointmentDate = dayjs(appointment.appointmentDateTime);
-    const dayKey = appointmentDate.format('YYYY-MM-DD');
-    const weekKey = `Week ${appointmentDate.week()}`;
-    const monthKey = appointmentDate.format('MMMM YYYY');
-    
-    if (dailyData[dayKey] !== undefined) dailyData[dayKey]++;
-    if (weeklyData[weekKey] !== undefined) weeklyData[weekKey]++;
-    if (monthlyData[monthKey] !== undefined) monthlyData[monthKey]++;
-  });
-
-  // Convert to array for charts
-  const dailyChartData = Object.keys(dailyData).map(date => ({
-    date,
-    count: dailyData[date]
-  }));
-
-  const weeklyChartData = Object.keys(weeklyData).map(week => ({
-    week,
-    count: weeklyData[week]
-  }));
-
-  const monthlyChartData = Object.keys(monthlyData).map(month => ({
-    month,
-    count: monthlyData[month]
-  }));
-
   // Calculate averages for predictive analytics
   const totalDays = endDate.diff(startDate, 'day') + 1;
   const avgDaily = filteredAppointments.length / totalDays;
@@ -163,9 +108,6 @@ const calculateStats = (dateRange, timeRange, customDate, customStartDate, custo
   return {
     total: filteredAppointments.length,
     statusCounts,
-    dailyChartData,
-    weeklyChartData,
-    monthlyChartData,
     avgDaily: Math.round(avgDaily * 10) / 10,
     predictedTotal: Math.round((filteredAppointments.length + predictedRemaining) * 10) / 10,
     startDate,
@@ -194,33 +136,6 @@ const AppointmentAnalytics = () => {
 
   const currentStats = calculateStats('current', timeRange, customDate, customStartDate, customEndDate, allAppointments.results);
   const comparisonStats = compareMode !== 'none' ? calculateStats('comparison', timeRange, compareDate, compareDate.startOf('week'), compareDate.endOf('week'), allAppointments.results) : null;
-
-  // Prepare comparison data for charts
-  const getComparisonChartData = () => {
-    if (!comparisonStats) return null;
-
-    if (timeRange === 'week') {
-      return currentStats.dailyChartData.map((current, index) => ({
-        date: current.date,
-        current: current.count,
-        comparison: comparisonStats.dailyChartData[index]?.count || 0
-      }));
-    } else if (timeRange === 'month') {
-      return currentStats.weeklyChartData.map((current, index) => ({
-        week: current.week,
-        current: current.count,
-        comparison: comparisonStats.weeklyChartData[index]?.count || 0
-      }));
-    } else {
-      return currentStats.monthlyChartData.map((current, index) => ({
-        month: current.month,
-        current: current.count,
-        comparison: comparisonStats.monthlyChartData[index]?.count || 0
-      }));
-    }
-  };
-
-  const comparisonChartData = getComparisonChartData();
 
   if (isLoading) {
     return <CircularProgress disableShrink />;
@@ -435,102 +350,6 @@ const AppointmentAnalytics = () => {
           </Grid>
         </Grid>
         
-        {/* Comparison Charts */}
-        {compareMode !== 'none' && comparisonChartData && (
-          <>
-            <Typography variant="h5" gutterBottom>
-              Comparison Analytics
-            </Typography>
-            <Grid container spacing={3} sx={{ mb: 4 }}>
-              <Grid item xs={12} md={6}>
-                <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
-                  <Typography variant="h6" gutterBottom>
-                    {timeRange === 'week' ? 'Daily Comparison' : 
-                     timeRange === 'month' ? 'Weekly Comparison' : 'Monthly Comparison'}
-                  </Typography>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart
-                      data={comparisonChartData}
-                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey={timeRange === 'week' ? 'date' : 
-                                 timeRange === 'month' ? 'week' : 'month'} 
-                      />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Area 
-                        type="monotone" 
-                        dataKey="current" 
-                        stackId="1" 
-                        stroke="#8884d8" 
-                        fill="#8884d8" 
-                        name="Current" 
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="comparison" 
-                        stackId="2" 
-                        stroke="#82ca9d" 
-                        fill="#82ca9d" 
-                        name="Comparison" 
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </Paper>
-              </Grid>
-              
-              <Grid item xs={12} md={6}>
-                <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
-                  <Typography variant="h6" gutterBottom>
-                    Status Distribution Comparison
-                  </Typography>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart
-                      data={[
-                        {
-                          name: 'Current',
-                          ...Object.fromEntries(
-                            Object.entries(currentStats.statusCounts).map(([status, count]) => 
-                              [status, count]
-                            )
-                          )
-                        },
-                        {
-                          name: 'Comparison',
-                          ...Object.fromEntries(
-                            Object.entries(comparisonStats.statusCounts).map(([status, count]) => 
-                              [status, count]
-                            )
-                          )
-                        }
-                      ]}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      {Object.keys(currentStats.statusCounts).map((status, index) => (
-                        <Bar 
-                          key={status} 
-                          dataKey={status} 
-                          fill={COLORS[index % COLORS.length]} 
-                        />
-                      ))}
-                    </BarChart>
-                  </ResponsiveContainer>
-                </Paper>
-              </Grid>
-            </Grid>
-            
-            <Divider sx={{ my: 4 }} />
-          </>
-        )}
-        
         {/* Status Distribution */}
         <Typography variant="h5" gutterBottom>
           Current Period Analytics
@@ -560,42 +379,7 @@ const AppointmentAnalytics = () => {
             </Paper>
           </Grid>
           
-          {/* Time-based Chart */}
-          <Grid item xs={12} md={6}>
-            <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
-              <Typography variant="h6" gutterBottom>
-                {timeRange === 'week' ? 'Daily Trend' : 
-                 timeRange === 'month' ? 'Weekly Trend' : 'Monthly Trend'}
-              </Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart
-                  data={timeRange === 'week' ? currentStats.dailyChartData : 
-                        timeRange === 'month' ? currentStats.weeklyChartData : currentStats.monthlyChartData}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey={timeRange === 'week' ? 'date' : 
-                             timeRange === 'month' ? 'week' : 'month'} 
-                  />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="count" 
-                    stroke="#82ca9d" 
-                    name="Appointments" 
-                    activeDot={{ r: 8 }} 
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </Paper>
-          </Grid>
-        </Grid>
-        
-        {/* Pie Chart for Status Distribution */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
+          {/* Pie Chart for Status Distribution */}
           <Grid item xs={12} md={6}>
             <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
               <Typography variant="h6" gutterBottom>
@@ -625,45 +409,43 @@ const AppointmentAnalytics = () => {
               </ResponsiveContainer>
             </Paper>
           </Grid>
-          
-          {/* Detailed Status Cards */}
-          <Grid item xs={12} md={6}>
-            <Grid container spacing={3}>
-              {Object.keys(currentStats.statusCounts).map((status, index) => (
-                <Grid item xs={12} sm={6} key={status}>
-                  <Paper elevation={3} sx={{ p: 3, textAlign: 'center' }}>
-                    <Typography variant="h6" color="text.secondary">
-                      {status}
+        </Grid>
+        
+        {/* Detailed Status Cards */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          {Object.keys(currentStats.statusCounts).map((status, index) => (
+            <Grid item xs={12} sm={6} md={3} key={status}>
+              <Paper elevation={3} sx={{ p: 3, textAlign: 'center' }}>
+                <Typography variant="h6" color="text.secondary">
+                  {status}
+                </Typography>
+                <Typography variant="h3" sx={{ mt: 1 }}>
+                  {currentStats.statusCounts[status]}
+                  {comparisonStats && (
+                    <Typography 
+                      variant="subtitle1" 
+                      color={currentStats.statusCounts[status] > (comparisonStats.statusCounts[status] || 0) ? 'success.main' : 'error.main'}
+                      component="span"
+                      sx={{ ml: 1 }}
+                    >
+                      ({comparisonStats.statusCounts[status] ? 
+                        ((currentStats.statusCounts[status] - comparisonStats.statusCounts[status]) / comparisonStats.statusCounts[status] * 100).toFixed(1) :
+                        '+100'}%)
                     </Typography>
-                    <Typography variant="h3" sx={{ mt: 1 }}>
-                      {currentStats.statusCounts[status]}
-                      {comparisonStats && (
-                        <Typography 
-                          variant="subtitle1" 
-                          color={currentStats.statusCounts[status] > (comparisonStats.statusCounts[status] || 0) ? 'success.main' : 'error.main'}
-                          component="span"
-                          sx={{ ml: 1 }}
-                        >
-                          ({comparisonStats.statusCounts[status] ? 
-                            ((currentStats.statusCounts[status] - comparisonStats.statusCounts[status]) / comparisonStats.statusCounts[status] * 100).toFixed(1) :
-                            '+100'}%)
-                        </Typography>
-                      )}
-                    </Typography>
-                    <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1 }}>
-                      {Math.round((currentStats.statusCounts[status] / currentStats.total) * 100)}% of total
-                      {comparisonStats && (
-                        <>
-                          <br />
-                          Previous: {comparisonStats.statusCounts[status] || 0}
-                        </>
-                      )}
-                    </Typography>
-                  </Paper>
-                </Grid>
-              ))}
+                  )}
+                </Typography>
+                <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1 }}>
+                  {Math.round((currentStats.statusCounts[status] / currentStats.total) * 100)}% of total
+                  {comparisonStats && (
+                    <>
+                      <br />
+                      Previous: {comparisonStats.statusCounts[status] || 0}
+                    </>
+                  )}
+                </Typography>
+              </Paper>
             </Grid>
-          </Grid>
+          ))}
         </Grid>
       </Box>
     </LocalizationProvider>
