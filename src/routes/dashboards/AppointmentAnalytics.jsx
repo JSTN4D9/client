@@ -28,7 +28,8 @@ import {
   Bar,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  ResponsiveContainer
 } from 'recharts';
 
 // Extend dayjs with plugins
