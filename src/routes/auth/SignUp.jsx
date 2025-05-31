@@ -96,6 +96,7 @@ export default function SignUp() {
   useEffect(() => {
     if (updatedUser) {
       setAlert({ type: "success", message: "User registered successfully!" });
+      setAlert({ type: "verify", message: "Verification link has been sent" });
       setTimeout(() => {
         navigate("/login");
       }, 2000);
