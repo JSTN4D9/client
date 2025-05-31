@@ -21,7 +21,6 @@ export default defineConfig({
         scope: "/",
         start_url: "/",
         display: "standalone",
-        icons: icons.icons,
         screenshots: [
           {
             src: "/screenshots/screenshot1.jpg",
