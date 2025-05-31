@@ -33,7 +33,10 @@ import {
   BarChart,
   Bar,
   LineChart,
-  Line
+  Line,
+  PieChart,
+  Pie,
+  Cell
 } from 'recharts';
 
 // Extend dayjs with plugins
