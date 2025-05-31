@@ -24,12 +24,16 @@ import advancedFormat from 'dayjs/plugin/advancedFormat';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 import { useFetchAllAppointmentsQuery } from '../../services/api/appointmentsApi';
 import { 
-  BarChart, 
+  ResponsiveContainer,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  BarChart,
   Bar,
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer
+  LineChart,
+  Line
 } from 'recharts';
 
 // Extend dayjs with plugins
