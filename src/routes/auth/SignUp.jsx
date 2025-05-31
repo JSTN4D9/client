@@ -94,29 +94,16 @@ export default function SignUp() {
   };
 
   useEffect(() => {
-  if (updatedUser) {
-    setAlert({ 
-      type: "success", 
-      message: "User registered successfully!",
-    });
-
-    const verificationTimer = setTimeout(() => {
-      setAlert(prev => ({
-        ...prev,
-        verificationMessage: "Verification link has been sent! Check your spam",
-      }));
-    }, 500);
-
-    const redirectTimer = setTimeout(() => {
-      navigate("/login");
-    }, 3000);
-
-    return () => {
-      clearTimeout(verificationTimer);
-      clearTimeout(redirectTimer);
-    };
-  }
-}, [updatedUser, navigate]);
+    if (updatedUser) {
+      setAlert({ 
+        type: "success", 
+        message: "Verification link has been sent! Check your spam",
+      });
+      setTimeout(() => {
+        navigate("/login");
+      }, 2500);
+    }
+  }, [updatedUser, navigate]);
 
   const password = watch("password");
 
