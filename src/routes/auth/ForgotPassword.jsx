@@ -13,7 +13,7 @@ import {
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { useForgotPasswordMutation } from "../../services/api/authApi";
 
-export default function ForgotPassword() {
+export default function ForgotPassword({ onSuccess }) {
   const { control, handleSubmit } = useForm();
   const [alert, setAlert] = useState(null);
   const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
@@ -25,6 +25,9 @@ export default function ForgotPassword() {
         type: "success",
         message: "Password reset link sent to your email.",
       });
+      setTimeout(() => {
+        onSuccess();
+      }, 2000);
     } catch (error) {
       setAlert({
         type: "error",

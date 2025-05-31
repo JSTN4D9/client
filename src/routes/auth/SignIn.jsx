@@ -34,7 +34,7 @@ const schema = yup.object().shape({
   password: yup.string().required("Password is required"),
 });
 
-export default function SignIn() {
+export default function SignIn({ onSuccess, onForgotPassword }) {
   const {
     control,
     handleSubmit,
@@ -52,7 +52,7 @@ export default function SignIn() {
 
   useEffect(() => {
     if (data) {
-      navigate("/");
+      onSuccess();
     } else if (error) {
       setAlert({
         type: "error",
@@ -183,7 +183,7 @@ export default function SignIn() {
               </StyledAuthLink>
             </Grid>
             <Grid item>
-              <StyledAuthLink to="/forgot-password">
+              <StyledAuthLink onClick={onForgotPassword}>
                 Forgot password?
               </StyledAuthLink>
             </Grid>

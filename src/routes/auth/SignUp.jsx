@@ -51,7 +51,7 @@ const schema = yup.object().shape({
   isAdmin: yup.boolean(),
 });
 
-export default function SignUp() {
+export default function SignUp({ onSuccess }) {
   const [registerUser, { isLoading }] = useRegisterUserMutation();
   const redirectByRole = useRedirectByRole();
   const [confirmPasswordTouched, setConfirmPasswordTouched] = useState(false);
@@ -100,10 +100,10 @@ export default function SignUp() {
         message: "Verification link has been sent! Check your spam",
       });
       setTimeout(() => {
-        navigate("/login");
+        onSuccess();
       }, 2500);
     }
-  }, [updatedUser, navigate]);
+  }, [updatedUser, onSuccess]);
 
   const password = watch("password");
 
