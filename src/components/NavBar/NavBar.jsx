@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useHandleSectionLink } from "../../utils/navigationUtils";
 import { useLogoutUserMutation } from "../../services/api/authApi";
@@ -13,7 +14,6 @@ import {
   Box,
   ListItem,
   List,
-  Button,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import {
@@ -24,21 +24,17 @@ import {
   StyledListItemText,
 } from "./NavBar.styles";
 import { getRefreshTokenFromStorage } from "../../utils/storage";
-import SignInModal from "../AuthModals/SignInModal";
-import SignUpModal from "../AuthModals/SignUpModal";
-import ForgotPasswordModal from "../AuthModals/ForgotPasswordModal";
 
 export default function Navbar() {
   const dispatch = useDispatch();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const handleNavClick = useHandleSectionLink();
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("md"));
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [signInOpen, setSignInOpen] = useState(false);
-  const [signUpOpen, setSignUpOpen] = useState(false);
-  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
-  const handleNavClick = useHandleSectionLink();
 
-  const [logoutUser] = useLogoutUserMutation();
+  const [logoutUser] = useLogoutUserMutation(); 
   const handleLogout = async () => {
     const refreshToken = getRefreshTokenFromStorage();
     if (refreshToken) {
@@ -51,6 +47,7 @@ export default function Navbar() {
     }
   };
 
+  // Access the user from the Redux store
   const user = useSelector((state) => state.auth.user);
 
   const handleDrawerToggle = () => {
@@ -69,34 +66,47 @@ export default function Navbar() {
   };
 
   const handleHomeClick = () => {
-    if (window.location.pathname === "/") {
+    if (location.pathname === "/") {
+      // If on the homepage, scroll to the top
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
-      window.location.href = "/";
+      // If on a different page, navigate to the homepage
+      navigate("/");
     }
   };
+
+  useEffect(() => {
+    if (location.pathname === "/" && location.state?.sectionId) {
+      // After navigation to the home page, scroll to the section
+      scroller.scrollTo(location.state.sectionId, {
+        duration: 350,
+        delay: 0,
+        smooth: "easeInOutQuart",
+      });
+    }
+  }, [location]);
 
   const drawerContent = (
     <Box sx={{ width: "100%" }}>
       <List>
-        <ListItem button onClick={handleHomeClick}>
+        <ListItem button component={Link} to="/" onClick={handleHomeClick}>
           <StyledListItemText primary="Home" />
         </ListItem>
-        <ListItem button component="a" href="/about">
+        <ListItem button component={Link} to="/about">
           <StyledListItemText primary="About Us" />
         </ListItem>
-        <ListItem button component="a" href="/staffs">
+        <ListItem button component={Link} to="/staffs">
           <StyledListItemText primary="Staffs" />
         </ListItem>
         <ListItem button onClick={() => handleNavClick("services-section")}>
           <StyledListItemText primary="Services" />
         </ListItem>
-        <ListItem button component="a" href="/contact">
+        <ListItem button component={Link} to="/contact">
           <StyledListItemText primary="Contact Us" />
         </ListItem>
         {user ? (
           <>
-            <ListItem button component="a" href={getDashboardRoute()}>
+            <ListItem button component={Link} to={getDashboardRoute()}>
               <StyledListItemText primary="Dashboard" />
             </ListItem>
             <ListItem button onClick={handleLogout}>
@@ -105,10 +115,10 @@ export default function Navbar() {
           </>
         ) : (
           <>
-            <ListItem button onClick={() => setSignInOpen(true)}>
+            <ListItem button component={Link} to="/login">
               <StyledListItemText primary="Sign In" />
             </ListItem>
-            <ListItem button onClick={() => setSignUpOpen(true)}>
+            <ListItem button component={Link} to="/register">
               <StyledListItemText primary="Sign Up" />
             </ListItem>
           </>
@@ -126,12 +136,18 @@ export default function Navbar() {
               {!isSmallScreen && (
                 <>
                   <NavLink onClick={handleHomeClick}>Home</NavLink>
-                  <NavLink href="/about">About Us</NavLink>
-                  <NavLink href="/staffs">Staffs</NavLink>
+                  <Link to="/about">
+                    <NavLink>About Us</NavLink>
+                  </Link>
+                  <Link to="/staffs">
+                    <NavLink>Staffs</NavLink>
+                  </Link>
                   <NavLink onClick={() => handleNavClick("services-section")}>
                     Services
                   </NavLink>
-                  <NavLink href="/contact">Contact us</NavLink>
+                  <Link to="/contact">
+                    <NavLink>Contact us</NavLink>
+                  </Link>
                 </>
               )}
               {isSmallScreen && (
@@ -158,68 +174,34 @@ export default function Navbar() {
                 <>
                   {user ? (
                     <>
-                      <NavLink href={getDashboardRoute()}>Dashboard</NavLink>
+                      <Link to={getDashboardRoute()}>
+                        <NavLink>Dashboard</NavLink>
+                      </Link>
                       <NavLink onClick={handleLogout}>Sign Out</NavLink>
                     </>
                   ) : (
                     <>
-                      <Button
-                        color="inherit"
-                        onClick={() => setSignInOpen(true)}
-                      >
-                        Sign In
-                      </Button>
-                      <Button
-                        color="inherit"
-                        onClick={() => setSignUpOpen(true)}
-                      >
-                        Sign Up
-                      </Button>
+                      <Link to="/login">
+                        <NavLink>Sign In</NavLink>
+                      </Link>
+
+                      <Link to="/register">
+                        <NavLink>Sign Up</NavLink>
+                      </Link>
                     </>
                   )}
                 </>
               )}
-              <Button
+              <NavLink
                 variant="outlined"
                 onClick={() => handleNavClick("booking-section")}
-                sx={{ ml: 2 }}
               >
                 Book Now
-              </Button>
+              </NavLink>
             </Grid>
           </Grid>
         </Toolbar>
       </Container>
-
-      {/* Auth Modals */}
-      <SignInModal
-        open={signInOpen}
-        onClose={() => setSignInOpen(false)}
-        onSwitchToSignUp={() => {
-          setSignInOpen(false);
-          setSignUpOpen(true);
-        }}
-        onSwitchToForgotPassword={() => {
-          setSignInOpen(false);
-          setForgotPasswordOpen(true);
-        }}
-      />
-      <SignUpModal
-        open={signUpOpen}
-        onClose={() => setSignUpOpen(false)}
-        onSwitchToSignIn={() => {
-          setSignUpOpen(false);
-          setSignInOpen(true);
-        }}
-      />
-      <ForgotPasswordModal
-        open={forgotPasswordOpen}
-        onClose={() => setForgotPasswordOpen(false)}
-        onSwitchToSignIn={() => {
-          setForgotPasswordOpen(false);
-          setSignInOpen(true);
-        }}
-      />
     </NavBarContainer>
   );
 }
