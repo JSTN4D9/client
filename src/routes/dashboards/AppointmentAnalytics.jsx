@@ -18,6 +18,10 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from "dayjs";
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+import advancedFormat from 'dayjs/plugin/advancedFormat';
+import weekOfYear from 'dayjs/plugin/weekOfYear';
 import { useFetchAllAppointmentsQuery } from '../../services/api/appointmentsApi';
 import { 
   LineChart, 
@@ -36,7 +40,138 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { calculateStats, COLORS } from './appointmentAnalyticsUtils';
+
+// Extend dayjs with plugins
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
+dayjs.extend(advancedFormat);
+dayjs.extend(weekOfYear);
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+
+const calculateStats = (dateRange, timeRange, customDate, customStartDate, customEndDate, appointments) => {
+  let startDate, endDate;
+  
+  if (dateRange === 'current') {
+    switch (timeRange) {
+      case 'day':
+        startDate = customDate.startOf('day');
+        endDate = customDate.endOf('day');
+        break;
+      case 'week':
+        startDate = customStartDate.startOf('day');
+        endDate = customEndDate.endOf('day');
+        break;
+      case 'month':
+        startDate = customDate.startOf('month');
+        endDate = customDate.endOf('month');
+        break;
+      case 'year':
+        startDate = customDate.startOf('year');
+        endDate = customDate.endOf('year');
+        break;
+      default:
+        startDate = dayjs().startOf('day');
+        endDate = dayjs().endOf('day');
+    }
+  } else {
+    // For comparison period
+    switch (timeRange) {
+      case 'day':
+        startDate = customDate.startOf('day');
+        endDate = customDate.endOf('day');
+        break;
+      case 'week':
+        startDate = customDate.startOf('week');
+        endDate = customDate.endOf('week');
+        break;
+      case 'month':
+        startDate = customDate.startOf('month');
+        endDate = customDate.endOf('month');
+        break;
+      case 'year':
+        startDate = customDate.startOf('year');
+        endDate = customDate.endOf('year');
+        break;
+      default:
+        startDate = dayjs().subtract(1, 'day').startOf('day');
+        endDate = dayjs().subtract(1, 'day').endOf('day');
+    }
+  }
+
+  const filteredAppointments = appointments.filter(appointment => {
+    const appointmentDate = dayjs(appointment.appointmentDateTime);
+    return appointmentDate.isSameOrAfter(startDate) && appointmentDate.isSameOrBefore(endDate);
+  });
+
+  // Status counts
+  const statusCounts = filteredAppointments.reduce((acc, appointment) => {
+    acc[appointment.status] = (acc[appointment.status] || 0) + 1;
+    return acc;
+  }, {});
+
+  // Daily breakdown (for week/month/year views)
+  const dailyData = {};
+  const weeklyData = {};
+  const monthlyData = {};
+
+  let currentDate = startDate;
+  while (currentDate.isSameOrBefore(endDate)) {
+    const dayKey = currentDate.format('YYYY-MM-DD');
+    const weekKey = `Week ${currentDate.week()}`;
+    const monthKey = currentDate.format('MMMM YYYY');
+    
+    dailyData[dayKey] = 0;
+    weeklyData[weekKey] = 0;
+    monthlyData[monthKey] = 0;
+    
+    currentDate = currentDate.add(1, 'day');
+  }
+
+  filteredAppointments.forEach(appointment => {
+    const appointmentDate = dayjs(appointment.appointmentDateTime);
+    const dayKey = appointmentDate.format('YYYY-MM-DD');
+    const weekKey = `Week ${appointmentDate.week()}`;
+    const monthKey = appointmentDate.format('MMMM YYYY');
+    
+    if (dailyData[dayKey] !== undefined) dailyData[dayKey]++;
+    if (weeklyData[weekKey] !== undefined) weeklyData[weekKey]++;
+    if (monthlyData[monthKey] !== undefined) monthlyData[monthKey]++;
+  });
+
+  // Convert to array for charts
+  const dailyChartData = Object.keys(dailyData).map(date => ({
+    date,
+    count: dailyData[date]
+  }));
+
+  const weeklyChartData = Object.keys(weeklyData).map(week => ({
+    week,
+    count: weeklyData[week]
+  }));
+
+  const monthlyChartData = Object.keys(monthlyData).map(month => ({
+    month,
+    count: monthlyData[month]
+  }));
+
+  // Calculate averages for predictive analytics
+  const totalDays = endDate.diff(startDate, 'day') + 1;
+  const avgDaily = filteredAppointments.length / totalDays;
+  const predictedRemaining = avgDaily * (endDate.diff(dayjs(), 'day'));
+
+  return {
+    total: filteredAppointments.length,
+    statusCounts,
+    dailyChartData,
+    weeklyChartData,
+    monthlyChartData,
+    avgDaily: Math.round(avgDaily * 10) / 10,
+    predictedTotal: Math.round((filteredAppointments.length + predictedRemaining) * 10) / 10,
+    startDate,
+    endDate
+  };
+};
 
 const AppointmentAnalytics = () => {
   const [timeRange, setTimeRange] = useState('day');
@@ -64,13 +199,7 @@ const AppointmentAnalytics = () => {
   const getComparisonChartData = () => {
     if (!comparisonStats) return null;
 
-    if (timeRange === 'day') {
-      return currentStats.hourlyChartData.map((current, index) => ({
-        hour: current.hour,
-        current: current.count,
-        comparison: comparisonStats.hourlyChartData[index]?.count || 0
-      }));
-    } else if (timeRange === 'week') {
+    if (timeRange === 'week') {
       return currentStats.dailyChartData.map((current, index) => ({
         date: current.date,
         current: current.count,
@@ -316,8 +445,7 @@ const AppointmentAnalytics = () => {
               <Grid item xs={12} md={6}>
                 <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
                   <Typography variant="h6" gutterBottom>
-                    {timeRange === 'day' ? 'Hourly Comparison' : 
-                     timeRange === 'week' ? 'Daily Comparison' : 
+                    {timeRange === 'week' ? 'Daily Comparison' : 
                      timeRange === 'month' ? 'Weekly Comparison' : 'Monthly Comparison'}
                   </Typography>
                   <ResponsiveContainer width="100%" height={300}>
@@ -327,8 +455,7 @@ const AppointmentAnalytics = () => {
                     >
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis 
-                        dataKey={timeRange === 'day' ? 'hour' : 
-                                 timeRange === 'week' ? 'date' : 
+                        dataKey={timeRange === 'week' ? 'date' : 
                                  timeRange === 'month' ? 'week' : 'month'} 
                       />
                       <YAxis />
@@ -437,21 +564,18 @@ const AppointmentAnalytics = () => {
           <Grid item xs={12} md={6}>
             <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
               <Typography variant="h6" gutterBottom>
-                {timeRange === 'day' ? 'Hourly Trend' : 
-                 timeRange === 'week' ? 'Daily Trend' : 
+                {timeRange === 'week' ? 'Daily Trend' : 
                  timeRange === 'month' ? 'Weekly Trend' : 'Monthly Trend'}
               </Typography>
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart
-                  data={timeRange === 'day' ? currentStats.hourlyChartData : 
-                        timeRange === 'week' ? currentStats.dailyChartData : 
+                  data={timeRange === 'week' ? currentStats.dailyChartData : 
                         timeRange === 'month' ? currentStats.weeklyChartData : currentStats.monthlyChartData}
                   margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
-                    dataKey={timeRange === 'day' ? 'hour' : 
-                             timeRange === 'week' ? 'date' : 
+                    dataKey={timeRange === 'week' ? 'date' : 
                              timeRange === 'month' ? 'week' : 'month'} 
                   />
                   <YAxis />
