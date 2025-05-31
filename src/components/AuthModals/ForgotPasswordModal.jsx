@@ -1,3 +1,4 @@
+// client/src/components/AuthModals/ForgotPasswordModal.jsx
 import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import {
@@ -6,14 +7,17 @@ import {
   Typography,
   Alert,
   Box,
-  Container,
   Avatar,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { useForgotPasswordMutation } from "../../services/api/authApi";
 
-export default function ForgotPassword() {
+export default function ForgotPasswordModal({ open, onClose, onSwitchToSignIn }) {
   const { control, handleSubmit } = useForm();
   const [alert, setAlert] = useState(null);
   const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
@@ -34,26 +38,24 @@ export default function ForgotPassword() {
   };
 
   return (
-    <Container component="main" maxWidth="xs">
-      <Box
-        display="flex"
-        flexDirection="column"
-        justifyContent="center"
-        alignItems="center"
-        height="100vh"
-      >
-        <Avatar sx={{ m: 1, bgcolor: "secondary.main" }}>
-          <LockOutlinedIcon />
-        </Avatar>
-        <Typography component="h1" variant="h5" gutterBottom>
-          Forgot Password
-        </Typography>
-        {alert && (
-          <Alert sx={{ width: "100%" }} severity={alert.type}>
-            {alert.message}
-          </Alert>
-        )}
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle>
+        <Box display="flex" flexDirection="column" alignItems="center">
+          <Avatar sx={{ m: 1, bgcolor: "secondary.main" }}>
+            <LockOutlinedIcon />
+          </Avatar>
+          <Typography component="h1" variant="h5">
+            Forgot Password
+          </Typography>
+        </Box>
+      </DialogTitle>
+      <DialogContent>
         <form onSubmit={handleSubmit(onSubmit)}>
+          {alert && (
+            <Alert sx={{ width: "100%", mb: 2 }} severity={alert.type}>
+              {alert.message}
+            </Alert>
+          )}
           <Controller
             name="email"
             control={control}
@@ -84,7 +86,12 @@ export default function ForgotPassword() {
             )}
           </Button>
         </form>
-      </Box>
-    </Container>
+      </DialogContent>
+      <DialogActions sx={{ justifyContent: "center", p: 2 }}>
+        <Button onClick={onSwitchToSignIn} color="primary">
+          Back to Sign In
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }

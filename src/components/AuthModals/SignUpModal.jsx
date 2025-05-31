@@ -1,40 +1,35 @@
+// client/src/components/AuthModals/SignUpModal.jsx
 import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useRegisterUserMutation } from "../../services/api/authApi";
-import { useLazyFetchUserByIdQuery } from "../../services/api/usersApi";
-import useRedirectByRole from "../../utils/redirectByRole";
-import { useNavigate } from "react-router-dom";
 import {
   Avatar,
   Button,
   TextField,
   FormControlLabel,
   Checkbox,
-  Grid,
-  Box,
   Typography,
-  Container,
+  Box,
   Alert,
-  AlertTitle,
   CircularProgress,
   InputAdornment,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Grid,
 } from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
-import Copyright from "../../components/Copyright/Copyright";
-import { StyledAuthLink } from "./SignIn.styles";
 
 const schema = yup.object().shape({
   firstName: yup.string().required("First name is required"),
   lastName: yup.string().required("Last name is required"),
-  email: yup
-    .string()
-    .email("Invalid email format")
-    .required("Email is required"),
+  email: yup.string().email("Invalid email format").required("Email is required"),
   password: yup.string().required("Password is required"),
   confirmPassword: yup
     .string()
@@ -51,16 +46,12 @@ const schema = yup.object().shape({
   isAdmin: yup.boolean(),
 });
 
-export default function SignUp() {
+export default function SignUpModal({ open, onClose, onSwitchToSignIn }) {
   const [registerUser, { isLoading }] = useRegisterUserMutation();
-  const redirectByRole = useRedirectByRole();
   const [confirmPasswordTouched, setConfirmPasswordTouched] = useState(false);
   const [alert, setAlert] = useState({ type: "", message: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const navigate = useNavigate();
-
-  const [fetchUserById, { data: updatedUser }] = useLazyFetchUserByIdQuery();
 
   const {
     control,
@@ -76,15 +67,12 @@ export default function SignUp() {
     const { isAdmin, confirmPassword, ...userData } = formData;
 
     try {
-      const result = await registerUser({ ...userData, role }).unwrap();
-
-      if (result) {
-        const { tokens, user } = result;
-        localStorage.setItem("token", tokens.access.token);
-        localStorage.setItem("refreshToken", tokens.refresh.token);
-        localStorage.setItem("user", JSON.stringify(user));
-        fetchUserById(user.id);
-      }
+      await registerUser({ ...userData, role }).unwrap();
+      setAlert({
+        type: "success",
+        message: "Registration successful! Please check your email for verification.",
+      });
+      setTimeout(onClose, 2000);
     } catch (error) {
       setAlert({
         type: "error",
@@ -92,18 +80,6 @@ export default function SignUp() {
       });
     }
   };
-
-  useEffect(() => {
-    if (updatedUser) {
-      setAlert({ 
-        type: "success", 
-        message: "Verification link has been sent! Check your spam",
-      });
-      setTimeout(() => {
-        navigate("/login");
-      }, 2500);
-    }
-  }, [updatedUser, navigate]);
 
   const password = watch("password");
 
@@ -115,37 +91,22 @@ export default function SignUp() {
     setShowConfirmPassword(!showConfirmPassword);
   };
 
-  const handleMouseDownPassword = (event) => {
-    event.preventDefault();
-  };
-
   return (
-    <Container component="main" maxWidth="xs">
-      <Box
-        sx={{
-          marginTop: 8,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-        }}
-      >
-        <Avatar sx={{ m: 1, bgcolor: "secondary.main" }}>
-          <LockOutlinedIcon />
-        </Avatar>
-        <Typography component="h1" variant="h5">
-          Sign up
-        </Typography>
-        <Box
-          component="form"
-          noValidate
-          onSubmit={handleSubmit(onSubmit)}
-          sx={{ mt: 3 }}
-        >
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>
+        <Box display="flex" flexDirection="column" alignItems="center">
+          <Avatar sx={{ m: 1, bgcolor: "secondary.main" }}>
+            <LockOutlinedIcon />
+          </Avatar>
+          <Typography component="h1" variant="h5">
+            Sign Up
+          </Typography>
+        </Box>
+      </DialogTitle>
+      <DialogContent>
+        <Box component="form" noValidate onSubmit={handleSubmit(onSubmit)}>
           {alert.message && (
-            <Alert severity={alert.type} sx={{ mb: 3 }}>
-              <AlertTitle>
-                {alert.type === "success" ? "Success" : "Error"}
-              </AlertTitle>
+            <Alert severity={alert.type} sx={{ mb: 2 }}>
               {alert.message}
             </Alert>
           )}
@@ -164,7 +125,6 @@ export default function SignUp() {
                     error={!!errors.firstName}
                     helperText={errors.firstName?.message}
                     required
-                    autoFocus
                   />
                 )}
               />
@@ -243,7 +203,6 @@ export default function SignUp() {
                           <IconButton
                             aria-label="toggle password visibility"
                             onClick={handleClickShowPassword}
-                            onMouseDown={handleMouseDownPassword}
                             edge="end"
                           >
                             {showPassword ? <VisibilityOff /> : <Visibility />}
@@ -291,7 +250,6 @@ export default function SignUp() {
                           <IconButton
                             aria-label="toggle confirm password visibility"
                             onClick={handleClickShowConfirmPassword}
-                            onMouseDown={handleMouseDownPassword}
                             edge="end"
                           >
                             {showConfirmPassword ? (
@@ -337,12 +295,13 @@ export default function SignUp() {
               "Sign Up"
             )}
           </Button>
-          <StyledAuthLink to="/login">
-            Already have an account? Sign in
-          </StyledAuthLink>
         </Box>
-      </Box>
-      <Copyright sx={{ mt: 5 }} />
-    </Container>
+      </DialogContent>
+      <DialogActions sx={{ justifyContent: "center", p: 2 }}>
+        <Button onClick={onSwitchToSignIn} color="primary">
+          Already have an account? Sign In
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }

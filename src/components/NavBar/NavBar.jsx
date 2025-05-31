@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useHandleSectionLink } from "../../utils/navigationUtils";
 import { useLogoutUserMutation } from "../../services/api/authApi";
@@ -14,7 +13,7 @@ import {
   Box,
   ListItem,
   List,
-  Modal,
+  Button,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import {
@@ -25,71 +24,19 @@ import {
   StyledListItemText,
 } from "./NavBar.styles";
 import { getRefreshTokenFromStorage } from "../../utils/storage";
-import SignIn from "../../routes/auth/SignIn";
-import SignUp from "../../routes/auth/SignUp";
-import ForgotPassword from "../../routes/auth/ForgotPassword";
-import { Tab, Tabs } from "@mui/material";
-
-const AuthModal = ({ open, onClose }) => {
-  const [activeTab, setActiveTab] = useState('signin');
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-
-  const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue);
-    setShowForgotPassword(false);
-  };
-
-  const modalStyle = {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    width: 400,
-    bgcolor: 'background.paper',
-    boxShadow: 24,
-    p: 4,
-    borderRadius: 2,
-  };
-
-  return (
-    <Modal open={open} onClose={onClose}>
-      <Box sx={modalStyle}>
-        {!showForgotPassword ? (
-          <>
-            <Tabs value={activeTab} onChange={handleTabChange} centered>
-              <Tab label="Sign In" value="signin" />
-              <Tab label="Sign Up" value="signup" />
-            </Tabs>
-            <Box sx={{ mt: 2 }}>
-              {activeTab === 'signin' ? (
-                <SignIn 
-                  onSuccess={onClose} 
-                  onForgotPassword={() => setShowForgotPassword(true)} 
-                />
-              ) : (
-                <SignUp onSuccess={onClose} />
-              )}
-            </Box>
-          </>
-        ) : (
-          <ForgotPassword 
-            onSuccess={() => setShowForgotPassword(false)} 
-          />
-        )}
-      </Box>
-    </Modal>
-  );
-};
+import SignInModal from "../AuthModals/SignInModal";
+import SignUpModal from "../AuthModals/SignUpModal";
+import ForgotPasswordModal from "../AuthModals/ForgotPasswordModal";
 
 export default function Navbar() {
   const dispatch = useDispatch();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const handleNavClick = useHandleSectionLink();
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("md"));
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
+  const [signUpOpen, setSignUpOpen] = useState(false);
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+  const handleNavClick = useHandleSectionLink();
 
   const [logoutUser] = useLogoutUserMutation();
   const handleLogout = async () => {
@@ -122,44 +69,34 @@ export default function Navbar() {
   };
 
   const handleHomeClick = () => {
-    if (location.pathname === "/") {
+    if (window.location.pathname === "/") {
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
-      navigate("/");
+      window.location.href = "/";
     }
   };
-
-  useEffect(() => {
-    if (location.pathname === "/" && location.state?.sectionId) {
-      scroller.scrollTo(location.state.sectionId, {
-        duration: 350,
-        delay: 0,
-        smooth: "easeInOutQuart",
-      });
-    }
-  }, [location]);
 
   const drawerContent = (
     <Box sx={{ width: "100%" }}>
       <List>
-        <ListItem button component={Link} to="/" onClick={handleHomeClick}>
+        <ListItem button onClick={handleHomeClick}>
           <StyledListItemText primary="Home" />
         </ListItem>
-        <ListItem button component={Link} to="/about">
+        <ListItem button component="a" href="/about">
           <StyledListItemText primary="About Us" />
         </ListItem>
-        <ListItem button component={Link} to="/staffs">
+        <ListItem button component="a" href="/staffs">
           <StyledListItemText primary="Staffs" />
         </ListItem>
         <ListItem button onClick={() => handleNavClick("services-section")}>
           <StyledListItemText primary="Services" />
         </ListItem>
-        <ListItem button component={Link} to="/contact">
+        <ListItem button component="a" href="/contact">
           <StyledListItemText primary="Contact Us" />
         </ListItem>
         {user ? (
           <>
-            <ListItem button component={Link} to={getDashboardRoute()}>
+            <ListItem button component="a" href={getDashboardRoute()}>
               <StyledListItemText primary="Dashboard" />
             </ListItem>
             <ListItem button onClick={handleLogout}>
@@ -168,10 +105,10 @@ export default function Navbar() {
           </>
         ) : (
           <>
-            <ListItem button onClick={() => setAuthModalOpen(true)}>
+            <ListItem button onClick={() => setSignInOpen(true)}>
               <StyledListItemText primary="Sign In" />
             </ListItem>
-            <ListItem button onClick={() => setAuthModalOpen(true)}>
+            <ListItem button onClick={() => setSignUpOpen(true)}>
               <StyledListItemText primary="Sign Up" />
             </ListItem>
           </>
@@ -181,82 +118,108 @@ export default function Navbar() {
   );
 
   return (
-    <>
-      <NavBarContainer position="static">
-        <Container maxWidth="lg">
-          <Toolbar disableGutters>
-            <Grid container alignItems="center" justifyContent="space-between">
-              <Grid item>
-                {!isSmallScreen && (
-                  <>
-                    <NavLink onClick={handleHomeClick}>Home</NavLink>
-                    <Link to="/about">
-                      <NavLink>About Us</NavLink>
-                    </Link>
-                    <Link to="/staffs">
-                      <NavLink>Staffs</NavLink>
-                    </Link>
-                    <NavLink onClick={() => handleNavClick("services-section")}>
-                      Services
-                    </NavLink>
-                    <Link to="/contact">
-                      <NavLink>Contact us</NavLink>
-                    </Link>
-                  </>
-                )}
-                {isSmallScreen && (
-                  <>
-                    <StyledIconButton
-                      edge="start"
-                      aria-label="menu"
-                      onClick={handleDrawerToggle}
-                    >
-                      <MenuIcon />
-                    </StyledIconButton>
-                    <StyledDrawer
-                      anchor="left"
-                      open={drawerOpen}
-                      onClose={handleDrawerToggle}
-                    >
-                      {drawerContent}
-                    </StyledDrawer>
-                  </>
-                )}
-              </Grid>
-              <Grid item>
-                {!isSmallScreen && (
-                  <>
-                    {user ? (
-                      <>
-                        <Link to={getDashboardRoute()}>
-                          <NavLink>Dashboard</NavLink>
-                        </Link>
-                        <NavLink onClick={handleLogout}>Sign Out</NavLink>
-                      </>
-                    ) : (
-                      <>
-                        <NavLink onClick={() => setAuthModalOpen(true)}>
-                          Sign In
-                        </NavLink>
-                        <NavLink onClick={() => setAuthModalOpen(true)}>
-                          Sign Up
-                        </NavLink>
-                      </>
-                    )}
-                  </>
-                )}
-                <NavLink
-                  variant="outlined"
-                  onClick={() => handleNavClick("booking-section")}
-                >
-                  Book Now
-                </NavLink>
-              </Grid>
+    <NavBarContainer position="static">
+      <Container maxWidth="lg">
+        <Toolbar disableGutters>
+          <Grid container alignItems="center" justifyContent="space-between">
+            <Grid item>
+              {!isSmallScreen && (
+                <>
+                  <NavLink onClick={handleHomeClick}>Home</NavLink>
+                  <NavLink href="/about">About Us</NavLink>
+                  <NavLink href="/staffs">Staffs</NavLink>
+                  <NavLink onClick={() => handleNavClick("services-section")}>
+                    Services
+                  </NavLink>
+                  <NavLink href="/contact">Contact us</NavLink>
+                </>
+              )}
+              {isSmallScreen && (
+                <>
+                  <StyledIconButton
+                    edge="start"
+                    aria-label="menu"
+                    onClick={handleDrawerToggle}
+                  >
+                    <MenuIcon />
+                  </StyledIconButton>
+                  <StyledDrawer
+                    anchor="left"
+                    open={drawerOpen}
+                    onClose={handleDrawerToggle}
+                  >
+                    {drawerContent}
+                  </StyledDrawer>
+                </>
+              )}
             </Grid>
-          </Toolbar>
-        </Container>
-      </NavBarContainer>
-      <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} />
-    </>
+            <Grid item>
+              {!isSmallScreen && (
+                <>
+                  {user ? (
+                    <>
+                      <NavLink href={getDashboardRoute()}>Dashboard</NavLink>
+                      <NavLink onClick={handleLogout}>Sign Out</NavLink>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        color="inherit"
+                        onClick={() => setSignInOpen(true)}
+                      >
+                        Sign In
+                      </Button>
+                      <Button
+                        color="inherit"
+                        onClick={() => setSignUpOpen(true)}
+                      >
+                        Sign Up
+                      </Button>
+                    </>
+                  )}
+                </>
+              )}
+              <Button
+                variant="outlined"
+                onClick={() => handleNavClick("booking-section")}
+                sx={{ ml: 2 }}
+              >
+                Book Now
+              </Button>
+            </Grid>
+          </Grid>
+        </Toolbar>
+      </Container>
+
+      {/* Auth Modals */}
+      <SignInModal
+        open={signInOpen}
+        onClose={() => setSignInOpen(false)}
+        onSwitchToSignUp={() => {
+          setSignInOpen(false);
+          setSignUpOpen(true);
+        }}
+        onSwitchToForgotPassword={() => {
+          setSignInOpen(false);
+          setForgotPasswordOpen(true);
+        }}
+      />
+      <SignUpModal
+        open={signUpOpen}
+        onClose={() => setSignUpOpen(false)}
+        onSwitchToSignIn={() => {
+          setSignUpOpen(false);
+          setSignInOpen(true);
+        }}
+      />
+      <ForgotPasswordModal
+        open={forgotPasswordOpen}
+        onClose={() => setForgotPasswordOpen(false)}
+        onSwitchToSignIn={() => {
+          setForgotPasswordOpen(false);
+          setSignInOpen(true);
+        }}
+      />
+    </NavBarContainer>
   );
 }

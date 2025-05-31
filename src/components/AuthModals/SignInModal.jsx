@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+// client/src/components/AuthModals/SignInModal.jsx
+import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -9,32 +10,27 @@ import {
   TextField,
   FormControlLabel,
   Checkbox,
-  Grid,
-  Box,
   Typography,
-  Container,
+  Box,
   Alert,
-  AlertTitle,
   CircularProgress,
   InputAdornment,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
-import Copyright from "../../components/Copyright/Copyright";
-import { StyledAuthLink } from "./SignIn.styles";
-import { useNavigate } from "react-router-dom";
 
 const schema = yup.object().shape({
-  email: yup
-    .string()
-    .email("Invalid email format")
-    .required("Email is required"),
+  email: yup.string().email("Invalid email format").required("Email is required"),
   password: yup.string().required("Password is required"),
 });
 
-export default function SignIn() {
+export default function SignInModal({ open, onClose, onSwitchToSignUp, onSwitchToForgotPassword }) {
   const {
     control,
     handleSubmit,
@@ -44,62 +40,42 @@ export default function SignIn() {
   });
 
   const [alert, setAlert] = useState({ type: "", message: "" });
-  const [rememberMe, setRememberMe] = useState(false); 
-  const [showPassword, setShowPassword] = useState(false); 
-  const navigate = useNavigate();
+  const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginUser, { isLoading }] = useLoginUserMutation();
 
-  const [loginUser, { data, error, isLoading }] = useLoginUserMutation();
-
-  useEffect(() => {
-    if (data) {
-      navigate("/");
-    } else if (error) {
+  const onSubmit = async (formData) => {
+    try {
+      await loginUser({ ...formData, rememberMe }).unwrap();
+      onClose();
+    } catch (error) {
       setAlert({
         type: "error",
         message: "Invalid credentials or user not found.",
       });
     }
-  }, [data, error, navigate]);
-
-  const onSubmit = (formData) => {
-    loginUser({ ...formData, rememberMe });
   };
 
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
   };
 
-  const handleMouseDownPassword = (event) => {
-    event.preventDefault();
-  };
-
   return (
-    <Container component="main" maxWidth="xs">
-      <Box
-        sx={{
-          marginTop: 8,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-        }}
-      >
-        <Avatar sx={{ m: 1, bgcolor: "secondary.main" }}>
-          <LockOutlinedIcon />
-        </Avatar>
-        <Typography component="h1" variant="h5">
-          Sign in
-        </Typography>
-        <Box
-          component="form"
-          onSubmit={handleSubmit(onSubmit)}
-          noValidate
-          sx={{ mt: 1 }}
-        >
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle>
+        <Box display="flex" flexDirection="column" alignItems="center">
+          <Avatar sx={{ m: 1, bgcolor: "secondary.main" }}>
+            <LockOutlinedIcon />
+          </Avatar>
+          <Typography component="h1" variant="h5">
+            Sign In
+          </Typography>
+        </Box>
+      </DialogTitle>
+      <DialogContent>
+        <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate sx={{ mt: 1 }}>
           {alert.message && (
-            <Alert severity={alert.type}>
-              <AlertTitle>
-                {alert.type === "success" ? "Success" : "Error"}
-              </AlertTitle>
+            <Alert severity={alert.type} sx={{ mb: 2 }}>
               {alert.message}
             </Alert>
           )}
@@ -116,7 +92,7 @@ export default function SignIn() {
                 autoComplete="email"
                 autoFocus
                 error={!!errors.email}
-                helperText={errors.email ? errors.email.message : ""}
+                helperText={errors.email?.message}
                 {...field}
               />
             )}
@@ -134,14 +110,13 @@ export default function SignIn() {
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 error={!!errors.password}
-                helperText={errors.password ? errors.password.message : ""}
+                helperText={errors.password?.message}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
                       <IconButton
                         aria-label="toggle password visibility"
                         onClick={handleClickShowPassword}
-                        onMouseDown={handleMouseDownPassword}
                         edge="end"
                       >
                         {showPassword ? <VisibilityOff /> : <Visibility />}
@@ -167,7 +142,7 @@ export default function SignIn() {
             type="submit"
             fullWidth
             variant="contained"
-            sx={{ mt: 3, mb: 2 }}
+            sx={{ mt: 2, mb: 2 }}
             disabled={isLoading}
           >
             {isLoading ? (
@@ -176,21 +151,16 @@ export default function SignIn() {
               "Sign In"
             )}
           </Button>
-          <Grid container alignItems="center" justifyContent="space-between">
-            <Grid item>
-              <StyledAuthLink to="/register">
-                {"Don't have an account? Sign Up"}
-              </StyledAuthLink>
-            </Grid>
-            <Grid item>
-              <StyledAuthLink to="/forgot-password">
-                Forgot password?
-              </StyledAuthLink>
-            </Grid>
-          </Grid>
         </Box>
-      </Box>
-      <Copyright sx={{ mt: 5 }} />
-    </Container>
+      </DialogContent>
+      <DialogActions sx={{ justifyContent: "space-between", p: 2 }}>
+        <Button onClick={onSwitchToSignUp} color="primary">
+          Don't have an account? Sign Up
+        </Button>
+        <Button onClick={onSwitchToForgotPassword} color="primary">
+          Forgot password?
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
